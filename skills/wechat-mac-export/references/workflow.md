@@ -16,7 +16,7 @@
 
 ```sh
 REPO="/path/to/wechat-mac-export"
-SKILL_DIR="$REPO/skills/wechat-mac-export"
+SKILL_DIR="/path/to/installed/wechat-mac-export"
 SOURCE="/path/to/account/db_storage"
 KEY_FILE="/path/to/local/master.key"
 CURRENT="/path/to/knowledge/private/chats"
@@ -27,6 +27,8 @@ umask 077
 mkdir -m 700 "$WORK"
 "$CLI" snapshot --source "$SOURCE" --output "$WORK/snapshot"
 ```
+
+`SKILL_DIR` 指向当前使用的技能目录，独立安装时使用安装目录；直接在含此流程的新版本仓库中使用时，也可设为 `$REPO/skills/wechat-mac-export`。`REPO` 负责提供离线导出 CLI，不要求它与技能位于同一目录。
 
 首次使用时，按项目 README 建立 `.venv` 并安装项目。后续使用已有环境，不依赖全局 Python 是否安装了项目依赖。
 
