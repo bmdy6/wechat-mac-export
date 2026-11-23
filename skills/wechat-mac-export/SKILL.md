@@ -7,7 +7,9 @@ description: "Use when a user wants to export their own macOS WeChat 4.2.0 chats
 
 项目来源：[bmdy6/wechat-mac-export](https://github.com/bmdy6/wechat-mac-export)。先定位已克隆的项目并读 `README.md`；只有单独安装的 Skill 时，可先克隆项目，再按 README 在其 `.venv` 安装命令，不依赖全局 Python 已有依赖。
 
-本机已有 `~/.config/wechat-mac-export/profile.json` 时先读其中的路径配置。可使用的字段是 `repository`、`live_source`、`key_file`、`private_output`、`work_root`、`vm_path` 和 `vm_uuid`；配置只存路径或环境标识，不存密钥值，目录 `700`、文件 `600`。没有配置时只补齐实际缺少的输入，已获授权的例行导出不重复询问。
+需要从头执行或交接这套流程时，读取 [完整更新流程](references/workflow.md)，其中包括输入检查、离线导出、保留结构写回、分组补充、完成验收及回滚。
+
+本机已有 `~/.config/wechat-mac-export/profile.json` 时先读其中的路径配置。输入字段是 `repository`、`live_source`、`key_file`、`private_output`、`work_root`、`vm_path` 和 `vm_uuid`；完成后记录 `last_success`、`last_run_dir`、`last_backup`，方便下次续接或回滚。配置不存密钥值，目录 `700`、文件 `600`。没有配置时只补齐实际缺少的输入，已获授权的例行导出不重复询问。
 
 在仓库外创建权限为 `700` 的本次工作目录。先检查版本、目标和已有密钥文件。已有密钥经当前快照校验通过后直接复用，不为测试虚拟机而重新登录微信。密钥只通过本地文件路径传入，聊天内容和联系人映射留在本地。
 

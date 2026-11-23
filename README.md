@@ -83,6 +83,8 @@ mkdir -m 700 -p "$WORK"
 
 Claude Code 或 Codex 可以直接读取仓库里的 [Agent 技能](skills/wechat-mac-export/SKILL.md)。单元测试只使用合成数据。
 
+从数据准备到知识库更新的操作顺序，见 [完整更新流程](skills/wechat-mac-export/references/workflow.md)。
+
 ### 更新已有的私有知识目录
 
 已有联系人分组、代号或带备注的编号目录时，使用 [结构化更新脚本](skills/wechat-mac-export/scripts/refresh_knowledge.py)。它按会话标识复用历史编号与目录，新联系人追加编号；人工分组原文保持不变，同时生成可阅读和可解析的分组索引。历史分析素材保留原时间范围。
