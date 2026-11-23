@@ -83,6 +83,30 @@ mkdir -m 700 -p "$WORK"
 
 Claude Code 或 Codex 可以直接读取仓库里的 [Agent 技能](skills/wechat-mac-export/SKILL.md)。单元测试只使用合成数据。
 
+### 更新已有的私有知识目录
+
+已有联系人分组、代号或带备注的编号目录时，使用 [结构化更新脚本](skills/wechat-mac-export/scripts/refresh_knowledge.py)。它按会话标识复用历史编号与目录，新联系人追加编号；人工分组原文保持不变，同时生成可阅读和可解析的分组索引。历史分析素材保留原时间范围。
+
+JSONL 更新为完整、按时间排列的记录；已有 Markdown 保留原文与人工备注，只在末尾增补本批次新增消息，回补旧日期的消息也出现在相应增补批次中。统计、导出清单和分组索引按当前数据重新生成。
+
+先完成上面的离线导出，再准备新目录。下面的路径均为占位示例，暂存目录和备份目录必须尚不存在，且与现有目录互相独立：
+
+```sh
+python3 skills/wechat-mac-export/scripts/refresh_knowledge.py prepare \
+  --export "/path/to/new/export" --current "/path/to/private/chats" \
+  --output "/path/to/work/prepared"
+```
+
+核对摘要、分组和旧文件保留情况后写回。原目录或暂存目录在准备后有变化时，命令拒绝覆盖；写回保留完整旧目录以便回滚。
+
+```sh
+python3 skills/wechat-mac-export/scripts/refresh_knowledge.py apply \
+  --prepared "/path/to/work/prepared" --current "/path/to/private/chats" \
+  --backup "/path/to/work/previous-chats"
+```
+
+只将此模式用于原始私有聊天导出。它不替代正式知识文档的 MCP 写入流程。路径配置、分组、联系人映射及输出数据应留在本地，不提交到本仓库。
+
 ```sh
 .venv/bin/python -m unittest discover -s tests -v
 ```
