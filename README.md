@@ -8,6 +8,7 @@
 
 - **首次导出**：按下方第 1–4 步准备输入、安装、复制校验并导出。
 - **更新已有知识库**：完成本次导出后，执行第 5 步，沿用历史编号和分组。
+- **接着让 AI 帮你回消息**：导出目录可以直接交给 [知音](https://github.com/bmdy6/zhiyin)（`zhiyin import_wechat --source <导出目录>`），格式见知音的 [导出格式](https://github.com/bmdy6/zhiyin/blob/main/docs/导出格式.md)。
 - **交给 Agent 执行**：读取 [Agent 技能](skills/wechat-mac-export/SKILL.md)；从准备到验收、异常接力和回滚，见 [完整更新流程](skills/wechat-mac-export/references/workflow.md)。
 
 常用请求：**“按现有分组更新微信聊天知识库。”** 用户已授权依据聊天补充分组时，Agent 可检查新增及待确认联系人，并保留判断依据。
