@@ -69,7 +69,7 @@ def _verify_sources(root: Path, key: bytes, selected: list[Path]) -> None:
             raise DatabaseError(f'{rel.name}：{exc}') from exc
 
 
-def _export(root: Path, key: bytes, selected: list[Path], owner: str | None, folder: str, output: Path) -> dict:
+def _export(root: Path, key: bytes, selected: list[Path], owner: str | None, folder: str, output: Path, *, include_groups=False, group_selectors=()) -> dict:
     if output.is_relative_to(root) or root.is_relative_to(output):
         raise ValueError('导出目录和快照必须独立')
     with TemporaryDirectory(dir=output.parent, prefix='.export-') as directory:
@@ -87,7 +87,7 @@ def _export(root: Path, key: bytes, selected: list[Path], owner: str | None, fol
                 if conn.execute('PRAGMA quick_check').fetchall() != [('ok',)]:
                     raise DatabaseError(f'{rel.name}：SQLite quick_check 未通过')
         contact = plain / 'contact.db'
-        chats, unresolved = collect_messages(plain, owner, contact if contact.is_file() else None, account_folder=folder)
+        chats, unresolved = collect_messages(plain, owner, contact if contact.is_file() else None, account_folder=folder, include_groups=include_groups, group_selectors=group_selectors)
         verify_snapshot(root)
         stage = temp / 'export'
         stage.mkdir(mode=0o700)
@@ -111,6 +111,8 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument('--handoff-dir', type=Path, help='密钥不可用时写入需要用户.txt')
         if action == 'export':
             command.add_argument('--output', required=True, type=Path, help='新建的导出目录')
+            command.add_argument('--include-groups', action='store_true', help='包含群聊；默认仅私聊')
+            command.add_argument('--group', action='append', default=[], help='只导出指定群名或群 ID，可重复；重名须使用 ID')
             command.add_argument('--self-id', help='无法从账户目录识别时指定微信数据库中的本人账号标识')
     handoff = commands.add_parser('handoff', help='写入人工接力提示文件')
     handoff.add_argument('--directory', required=True, type=Path)
@@ -137,7 +139,7 @@ def _run(args) -> dict:
         raise
     if args.command == 'verify':
         return {'verified_databases': len(selected)}
-    return _export(root, key, selected, args.self_id, metadata.get('account_folder', ''), _new_output(args.output))
+    return _export(root, key, selected, args.self_id, metadata.get('account_folder', ''), _new_output(args.output), include_groups=args.include_groups, group_selectors=tuple(args.group))
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -79,7 +79,8 @@ def _directory(plain: Path, contact: Path | None) -> tuple[dict[str, str], set[s
 
 
 def collect_messages(plain: Path, owner: str | None, contact: Path | None,
-                     *, account_folder: str = '') -> tuple[dict, int]:
+                     *, account_folder: str = '', include_groups: bool = False,
+                     group_selectors: tuple[str, ...] = ()) -> tuple[dict, int]:
     shards = sorted(p for p in plain.iterdir() if SHARD.fullmatch(p.name))
     if not shards:
         raise ValueError('没有可读取的消息库')
@@ -91,6 +92,14 @@ def collect_messages(plain: Path, owner: str | None, contact: Path | None,
             names = dict(conn.execute('SELECT rowid, user_name FROM Name2Id'))
             shard_names[shard] = names
             candidates.update(name for name in names.values() if name)
+    selected_groups = set()
+    for selector in group_selectors:
+        available = groups | {k for k in candidates if k.endswith('@chatroom')}
+        exact = {selector} if selector in available else set()
+        matches = exact or {cid for cid in available if labels.get(cid) == selector}
+        if len(matches) != 1:
+            raise ValueError('群选择未匹配或存在重名，请使用唯一群 ID')
+        selected_groups.update(matches)
     if owner is None:
         matches = {name for name in candidates if account_folder == name or account_folder.startswith(name + '_')}
         if len(matches) != 1:
@@ -112,17 +121,27 @@ def collect_messages(plain: Path, owner: str | None, contact: Path | None,
                     if conn.execute(f'SELECT 1 FROM "{table}" LIMIT 1').fetchone():
                         unresolved.add(table.lower())
                     continue
-                if cid in groups or cid.endswith('@chatroom') or cid.startswith('gh_') or cid in SYSTEM_ACCOUNTS:
+                is_group = cid in groups or cid.endswith('@chatroom')
+                if cid.startswith('gh_') or cid in SYSTEM_ACCOUNTS:
+                    continue
+                if group_selectors:
+                    if cid not in selected_groups:
+                        continue
+                elif is_group and not include_groups:
                     continue
                 rows = conn.execute(f'SELECT local_id, server_id, create_time, local_type, real_sender_id, message_content FROM "{table}"')
                 for local, server, ts, raw_kind, sender_id, raw in rows:
                     kind = int(raw_kind or 0) & 0xFFFF
                     sender_id = names.get(sender_id)
-                    side = 'me' if sender_id == owner else 'them' if sender_id == cid else 'unknown'
+                    side = 'me' if sender_id == owner else 'them' if sender_id and (is_group or sender_id == cid) else 'unknown'
                     text, subtype = parse_message(kind, raw)
+                    # Group text transport may prepend the sender's database ID.
+                    if is_group and sender_id and text.startswith(sender_id + ':\n'):
+                        text = text[len(sender_id) + 2:]
                     messages[cid].append({'timestamp': ts, 'sender': side, 'type': kind, 'subtype': subtype,
                                           'local_id': local, 'server_id': server, 'shard': shard.stem,
-                                          'text': text})
+                                          'text': text, **({'chat_type': 'group', 'sender_id': sender_id,
+                                          'sender_name': labels.get(sender_id, sender_id)} if is_group else {})})
     result = {cid: (labels.get(cid, cid), sorted(rows, key=lambda row: (
         row['timestamp'], row['shard'], row['local_id'] or 0))) for cid, rows in messages.items()}
     return result, len(unresolved)
@@ -137,7 +156,7 @@ def write_export(root: Path, conversations: dict, unresolved: int) -> dict:
     total = 0
     unknown = 0
     ranking = sorted(conversations, key=lambda cid: (-len(conversations[cid][1]), cid))
-    report = ['# 私聊导出统计', '', '| 编号 | 条数 | 最早（UTC） | 最晚（UTC） |', '| --- | ---: | --- | --- |']
+    report = ['# 会话导出统计', '', '| 编号 | 条数 | 最早（UTC） | 最晚（UTC） |', '| --- | ---: | --- | --- |']
     for seq, cid in enumerate(ranking, 1):
         label, rows = conversations[cid]
         folder = f'{seq:03d}'
@@ -145,7 +164,9 @@ def write_export(root: Path, conversations: dict, unresolved: int) -> dict:
         dest.mkdir(mode=0o700)
         first, last = (_timestamp(rows[index]['timestamp']) for index in (0, -1))
         manifest.append({'sequence': seq, 'conversation_id': cid, 'label': label, 'folder': folder,
-                         'count': len(rows), 'first': first, 'last': last})
+                         'count': len(rows), 'first': first, 'last': last,
+                         'code': ('G' if rows[0].get('chat_type') == 'group' else 'A') + hashlib.sha256(cid.encode()).hexdigest()[:12].upper(),
+                         'chat_type': rows[0].get('chat_type', 'private')})
         report.append(f'| {folder} | {len(rows)} | {first} | {last} |')
         total += len(rows)
         with (dest/'chat.jsonl').open('x', encoding='utf-8') as jsonl, (dest/'chat.md').open('x', encoding='utf-8') as md:
